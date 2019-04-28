@@ -20,74 +20,58 @@ impl<T> Matcher<T> {
     }
 }
 
-pub struct FizzType<T>(pub Vec<Matcher<T>>);
+#[derive(Default)]
+pub struct Fizzy<T>(pub Vec<Matcher<T>>);
 
-impl<T> FizzType<T> {
-    pub fn apply<I>(self, iter: I) -> Fizzy<T, I>
-    where
-        I: Iterator<Item = T>,
-    {
-        Fizzy {
-            matchers: self,
-            iter,
-        }
-    }
-}
-
-pub struct Fizzy<T, I> {
-    matchers: FizzType<T>,
-    iter: I,
-}
-
-impl<T, I> Fizzy<T, I>
-where
-    I: Iterator<Item = T>,
-{
-    pub fn wrap(iter: I) -> Fizzy<T, I> {
-        Fizzy {
-            matchers: FizzType(Vec::new()),
-            iter: iter,
-        }
-    }
-
-    pub fn add_matcher(&mut self, matcher: Matcher<T>) {
-        let FizzType(ref mut matchers) = self.matchers;
-        matchers.push(matcher);
-    }
-}
-
-impl<T, I> Iterator for Fizzy<T, I>
+impl<T> Fizzy<T>
 where
     T: Copy + ToString,
-    I: Iterator<Item = T>,
 {
-    type Item = String;
+    pub fn new() -> Self {
+        Fizzy(Vec::new())
+    }
 
-    fn next(&mut self) -> Option<String> {
-        let n = self.iter.next()?;
+    pub fn with_capacity(capacity: usize) -> Self {
+        Fizzy(Vec::with_capacity(capacity))
+    }
+
+    pub fn add_matcher(mut self, matcher: Matcher<T>) -> Self {
+        let Fizzy(ref mut matchers) = self;
+        matchers.push(matcher);
+        self
+    }
+
+    pub fn apply_to(&self, item: T) -> String {
+        let Fizzy(ref matchers) = self;
         let mut out = String::new();
-        let FizzType(ref matchers) = self.matchers;
-
         for matcher in matchers {
-            if (matcher.matcher)(n) {
-                out += &matcher.subs.clone();
+            if (matcher.matcher)(item) {
+                out += &matcher.subs;
             }
         }
         if out.is_empty() {
-            out = n.to_string();
+            out = item.to_string()
         }
-        Some(out)
+        out
+    }
+
+    /// convenience function: equivalent to `iter.map(self.apply_to)`.
+    pub fn apply<I>(self, iter: I) -> impl Iterator<Item = String>
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.map(move |item| self.apply_to(item))
     }
 }
 
-pub fn fizz_buzz<T>() -> FizzType<T>
+pub fn fizz_buzz<T>() -> Fizzy<T>
 where
     T: Copy + Default + From<u8> + PartialEq + Rem<Output = T> + 'static,
 {
     let three: T = 3.into();
     let five: T = 5.into();
 
-    FizzType(vec![
+    Fizzy(vec![
         Matcher::new(move |n| n % three == T::default(), "fizz"),
         Matcher::new(move |n| n % five == T::default(), "buzz"),
     ])
@@ -145,10 +129,11 @@ mod test {
             "1", "2", "Fizz", "4", "Buzz", "Fizz", "Bam", "8", "Fizz", "Buzz", "11", "Fizz", "13",
             "Bam", "BuzzFizz", "16",
         ];
-        let mut fizzer = Fizzy::wrap(1..=16);
-        fizzer.add_matcher(Matcher::new(|n| n % 5 == 0, "Buzz"));
-        fizzer.add_matcher(Matcher::new(|n| n % 3 == 0, "Fizz"));
-        fizzer.add_matcher(Matcher::new(|n| n % 7 == 0, "Bam"));
+        let fizzer = Fizzy::new()
+            .add_matcher(Matcher::new(|n| n % 5 == 0, "Buzz"))
+            .add_matcher(Matcher::new(|n| n % 3 == 0, "Fizz"))
+            .add_matcher(Matcher::new(|n| n % 7 == 0, "Bam"))
+            .apply(1..=16);
         let got = fizzer.collect::<Vec<_>>();
         assert_eq!(expect, got);
     }
