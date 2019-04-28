@@ -55,7 +55,7 @@ where
         out
     }
 
-    /// convenience function: equivalent to `iter.map(self.apply_to)`.
+    /// convenience function: equivalent to `iter.map(move |item| self.apply_to(item))`.
     pub fn apply<I>(self, iter: I) -> impl Iterator<Item = String>
     where
         I: Iterator<Item = T>,
@@ -135,6 +135,33 @@ mod test {
             .add_matcher(Matcher::new(|n| n % 7 == 0, "Bam"))
             .apply(1..=16);
         let got = fizzer.collect::<Vec<_>>();
+        assert_eq!(expect, got);
+    }
+
+    #[test]
+    fn test_map() {
+        let expect = vec![
+            "1", "2", "fizz", "4", "buzz", "fizz", "7", "8", "fizz", "buzz", "11", "fizz", "13",
+            "14", "fizzbuzz", "16",
+        ];
+        let fb = fizz_buzz();
+        let got = (1..=16)
+            .map(move |item| fb.apply_to(item))
+            .collect::<Vec<_>>();
+        assert_eq!(expect, got);
+    }
+
+    #[test]
+    fn test_fizz_buzz_f64() {
+        let expect = vec![
+            "1", "2", "fizz", "4", "buzz", "fizz", "7", "8", "fizz", "buzz", "11", "fizz", "13",
+            "14", "fizzbuzz", "16",
+        ];
+        // a tiny bit more complicated becuase range isn't natively implemented on floats
+        let got = fizz_buzz()
+            .apply(std::iter::successors(Some(1.0), |prev| Some(prev + 1.0)))
+            .take(16)
+            .collect::<Vec<_>>();
         assert_eq!(expect, got);
     }
 }
