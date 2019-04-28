@@ -21,7 +21,7 @@ impl<T> Matcher<T> {
 }
 
 #[derive(Default)]
-pub struct Fizzy<T>(pub Vec<Matcher<T>>);
+pub struct Fizzy<T>(Vec<Matcher<T>>);
 
 impl<T> Fizzy<T>
 where
@@ -29,10 +29,6 @@ where
 {
     pub fn new() -> Self {
         Fizzy(Vec::new())
-    }
-
-    pub fn with_capacity(capacity: usize) -> Self {
-        Fizzy(Vec::with_capacity(capacity))
     }
 
     pub fn add_matcher(mut self, matcher: Matcher<T>) -> Self {
@@ -61,6 +57,12 @@ where
         I: Iterator<Item = T>,
     {
         iter.map(move |item| self.apply_to(item))
+    }
+}
+
+impl<T> From<Vec<Matcher<T>>> for Fizzy<T> {
+    fn from(matchers: Vec<Matcher<T>>) -> Fizzy<T> {
+        Fizzy(matchers)
     }
 }
 
